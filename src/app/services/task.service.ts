@@ -1,39 +1,43 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject , Observable } from 'rxjs';
 import { Task } from '../interfaces/task';
 
 @Injectable({
   providedIn: 'root'
 })
 export class TaskService {
-  private tasks = new BehaviorSubject<Task[]>([]);
-  private idCounter = 1;
+  private tasksSubject = new BehaviorSubject<Task[]>(this.loadTasks());
+  tasks$ = this.tasksSubject.asObservable();
 
-  getTasks() {
-    return this.tasks.asObservable();
+  getTasks(): Observable<Task[]> {
+    return this.tasks$;
   }
 
+  
+
   addTask(title: string) {
-    const currentTasks = this.tasks.getValue();
-    const newTask: Task = {
-      id: this.idCounter++,
-      title,
-      completed: false
-    };
-    this.tasks.next([...currentTasks, newTask]);
+    const tasks = [...this.tasksSubject.value, { id: Date.now(), title, completed: false }];
+    this.updateTasks(tasks);
   }
 
   toggleTaskCompletion(id: number) {
-    const currentTasks = this.tasks.getValue();
-    const updatedTasks = currentTasks.map(task => 
+    const tasks = this.tasksSubject.value.map(task =>
       task.id === id ? { ...task, completed: !task.completed } : task
     );
-    this.tasks.next(updatedTasks);
+    this.updateTasks(tasks);
   }
 
   deleteTask(id: number) {
-    const currentTasks = this.tasks.getValue();
-    const updatedTasks = currentTasks.filter(task => task.id !== id);
-    this.tasks.next(updatedTasks);
+    const tasks = this.tasksSubject.value.filter(task => task.id !== id);
+    this.updateTasks(tasks);
+  }
+
+  private updateTasks(tasks: Task[]) {
+    this.tasksSubject.next(tasks);
+    localStorage.setItem('tasks', JSON.stringify(tasks));
+  }
+
+  private loadTasks(): Task[] {
+    return JSON.parse(localStorage.getItem('tasks') || '[]');
   }
 }
